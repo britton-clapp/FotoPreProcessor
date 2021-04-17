@@ -116,7 +116,8 @@ Appropriate methods for handling and showing these properties are defined, too."
 		self.str_cameraSettings = ""
 		self.str_cameraHardware = ""
 		self.str_copyright = ""
-		
+		self.str_description = ""
+
 		self.int_orientation = 1
 		self.int_rotation = 0
 		self.tpl_timezones = ("UTC","UTC")
@@ -127,7 +128,8 @@ Appropriate methods for handling and showing these properties are defined, too."
 		self.tpl_saved_location = ()
 		self.tpl_saved_keywords = ()
 		self.str_saved_copyright = ""
-		
+		self.str_saved_description = ""
+
 		self.int_timeshift = 0
 		self.date_shiftedTimestamp = None
 		self.date_utcTimestamp = None
@@ -138,7 +140,8 @@ Appropriate methods for handling and showing these properties are defined, too."
 		self.bool_editedTimezones = False
 		self.bool_editedKeywords = False
 		self.bool_editedCopyright = False
-		
+		self.bool_editedDescription = False
+
 		self.int_width = -1
 		self.int_height = -1
 		
@@ -251,9 +254,10 @@ Compare orientation, timeshift, location, keywords to previously saved values.""
 		self.bool_editedLocation = (self.tpl_location != self.tpl_saved_location)
 		self.bool_editedKeywords = (self.tpl_keywords != self.tpl_saved_keywords)
 		self.bool_editedCopyright = (self.str_copyright != self.str_saved_copyright)
+		self.bool_editedDescription = (self.str_description != self.str_saved_description)
 		self.bool_edited = (self.bool_editedOrientation or \
 			self.bool_editedLocation or self.bool_editedTimezones or \
-			self.bool_editedKeywords or self.bool_editedCopyright)
+			self.bool_editedKeywords or self.bool_editedDescription)
 		self.setData(QtCore.Qt.UserRole,self.bool_edited)
 	
 	
@@ -297,7 +301,14 @@ Note: This is based on a variable which gets updated by updateEditState()."""
 
 Note: This is based on a variable which gets updated by updateEditState()."""
 		return self.bool_editedCopyright
-	
+
+
+	def descriptionEdited(self):
+		"""Return True if the item's description string was changed.
+
+Note: This is based on a variable which gets updated by updateEditState()."""
+		return self.bool_editedDescription
+
 	
 	def setFilename(self,filename=None):
 		"""Set filename property."""
@@ -612,6 +623,21 @@ Hardware: Camera model and/or lens type, e.g.:
 		return self.str_copyright
 	
 	
+	def setDescription(self,description=""):
+		"""Set description string. Expects a unicode string."""
+		if description != None:
+			try:
+				self.str_description = str(description)
+				self.updateEditState()
+				self.updateToolTip()
+			except:
+				pass
+
+	def description(self):
+		"""Return the item's description unicode string. Might be empty."""
+		return self.str_description
+
+
 	def setLocation(self,latitude=None,longitude=None,elevation=None):
 		"""Set location of item to given coordinates.
 		
@@ -777,6 +803,12 @@ in order to create a new item icon."""
 			else:
 				str_tooltip += "<p>&#169; {0}</p>".format(self.str_copyright)
 		
+		if len(self.str_description) > 0:
+			if self.bool_editedDescription:
+				str_tooltip += "<p><font color=\"red\">&#169; {0}</font></p>".format(self.str_description)
+			else:
+				str_tooltip += "<p>&#169; {0}</p>".format(self.str_description)
+
 		self.setToolTip(str_tooltip)
 	
 	
@@ -786,6 +818,7 @@ in order to create a new item icon."""
 		self.tpl_saved_location = self.tpl_location
 		self.tpl_saved_timezones = self.tpl_timezones
 		self.str_saved_copyright = self.str_copyright
+		self.str_saved_description = self.str_description
 		self.updateEditState()
 		self.updateToolTip()
 	
@@ -818,6 +851,11 @@ in order to create a new item icon."""
 		self.setCopyright(self.str_saved_copyright)
 	
 	
+	def resetDescription(self):
+		"""Return to previously saved location."""
+		self.setDescription(self.str_saved_description)
+
+
 	def resetAll(self):
 		"""Reset all properties to previously saved values.
 
@@ -827,6 +865,7 @@ Convenience method to call all other reset* methods at once."""
 		self.resetKeywords()
 		self.resetLocation()
 		self.resetCopyright()
+		self.resetDescription()
 
 
 

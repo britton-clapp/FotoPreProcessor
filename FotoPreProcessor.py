@@ -263,6 +263,7 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 		self.action_resetKeywords = QtWidgets.QAction(QtCore.QCoreApplication.translate("Menu","Reset keywords"),self)
 		self.action_resetTimezones = QtWidgets.QAction(QtCore.QCoreApplication.translate("Menu","Reset timezones"),self)
 		self.action_resetCopyright = QtWidgets.QAction(QtCore.QCoreApplication.translate("Menu","Reset copyright notice"),self)
+		self.action_resetDescription = QtWidgets.QAction(QtCore.QCoreApplication.translate("Menu","Reset description"),self)
 		self.action_resetAll = QtWidgets.QAction(QtCore.QCoreApplication.translate("Menu","Reset everything"),self)
 		
 		action_config = QtWidgets.QAction(QtCore.QCoreApplication.translate("Menu","Configure FPP..."),self)
@@ -314,12 +315,14 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 		self.dock_timezones  = FotoPreProcessorWidgets.FPPTimezonesDock()
 		self.dock_keywords   = FotoPreProcessorWidgets.FPPKeywordsDock()
 		self.dock_copyright  = FotoPreProcessorWidgets.FPPCopyrightDock()
-		
+		self.dock_description  = FotoPreProcessorWidgets.FPPDescriptionDock()
+
 		self.dock_geotagging.setEnabled(False)
 		self.dock_timezones.setEnabled(False)
 		self.dock_keywords.setEnabled(False)
 		self.dock_copyright.setEnabled(False)
-		
+		self.dock_description.setEnabled(False)
+
 		#---------------------------------------------------------------
 		# construct menubar
 		#
@@ -365,7 +368,8 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 		menu_docks.addAction(self.dock_timezones.toggleViewAction())
 		menu_docks.addAction(self.dock_keywords.toggleViewAction())
 		menu_docks.addAction(self.dock_copyright.toggleViewAction())
-		
+		menu_docks.addAction(self.dock_description.toggleViewAction())
+
 		actiongroup_iconSize = QtWidgets.QActionGroup(self)
 		sizes = list(self.dct_iconsize.keys())
 		sizes.sort()
@@ -419,6 +423,7 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 		self.action_resetTimezones.triggered.connect(self.resetTimezones)
 		self.action_resetKeywords.triggered.connect(self.resetKeywords)
 		self.action_resetCopyright.triggered.connect(self.resetCopyright)
+		self.action_resetDescription.triggered.connect(self.resetDescription)
 		self.action_locationLookUp.triggered.connect(self.dock_geotagging.lookUpCoordinates)
 		self.action_openGimp.triggered.connect(self.openWithTheGimp)
 		
@@ -429,7 +434,8 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 		self.action_resetTimezones.changed.connect(self.updateResetAllAction)
 		self.action_resetKeywords.changed.connect(self.updateResetAllAction)
 		self.action_resetCopyright.changed.connect(self.updateResetAllAction)
-		
+		self.action_resetDescription.changed.connect(self.updateResetAllAction)
+
 		#---------------------------------------------------------------
 		
 		self.dock_geotagging.dockDataUpdated.connect(self.updateLocation)
@@ -451,6 +457,11 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 		self.dock_copyright.dockDataUpdated.connect(self.updateCopyright)
 		self.dock_copyright.dockResetTriggered.connect(self.resetCopyright)
 		
+		#---------------------------------------------------------------
+
+		self.dock_description.dockDataUpdated.connect(self.updateDescription)
+		self.dock_description.dockResetTriggered.connect(self.resetDescription)
+
 		#---------------------------------------------------------------
 		
 		action_config.triggered.connect(self.configureProgram)
@@ -474,7 +485,8 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 		self.addDockWidget(QtCore.Qt.RightDockWidgetArea,self.dock_timezones)
 		self.addDockWidget(QtCore.Qt.RightDockWidgetArea,self.dock_keywords)
 		self.addDockWidget(QtCore.Qt.RightDockWidgetArea,self.dock_copyright)
-		
+		self.addDockWidget(QtCore.Qt.RightDockWidgetArea,self.dock_description)
+
 		self.setWindowTitle(QtCore.QCoreApplication.translate("MainWindow","FotoPreProcessor"))
 		self.setWindowIcon(QtGui.QIcon(os.path.join(sys.path[0],"icons","FPP.png")))
 		
@@ -512,6 +524,7 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 				return False
 		
 		self.dock_copyright.close() # i.e.: save copyright DB
+		self.dock_description.close() # i.e.: save description DB
 		self.dock_keywords.close()  # i.e.: save keywords DB
 		# save miscellaneous settings
 		settings = QtCore.QSettings()
@@ -659,6 +672,7 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 				"-LensType",
 				"-ThumbnailImageValidArea",
 				"-Copyright",
+				"-xmp-dc:description",
 				"-Author",
 				"-GPS:GPSLatitude#",
 				"-GPS:GPSLatitudeRef#",
@@ -740,6 +754,7 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 					previewData  = b""
 					author       = ""
 					copyright    = ""
+					descriptiontext = ""
 					imgwidth     = -1
 					imgheight    = -1
 					item = FotoPreProcessorItem.FPPGalleryItem(self.list_images)
@@ -789,6 +804,8 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 							copyright = self.getFirstTextChild(node)
 							try:    copyright = re.match(r'^(©|\(C\)|\(c\)|Copyright \(C\)|Copyright \(c\)|Copyright ©) [0-9-]* (.*)',copyright).groups()[1]
 							except: pass
+						elif node.localName == "Description":
+							descriptiontext = self.getFirstTextChild(node)
 						elif node.localName == "Author":
 							author = self.getFirstTextChild(node)
 						elif node.localName == "GPSLatitude":
@@ -919,6 +936,9 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 						if len(copyright) > 0:
 							item.setCopyright(copyright)
 
+					if len(descriptiontext) > 0:
+						item.setDescription(descriptiontext)
+
 					item.setSortCriterion(sortCriterion)
 					item.saveState()
 					#
@@ -960,7 +980,8 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 		self.action_resetTimezones.setEnabled(False)
 		self.action_resetKeywords.setEnabled(False)
 		self.action_resetCopyright.setEnabled(False)
-		
+		self.action_resetDescription.setEnabled(False)
+
 		self.action_rotateLeft.setEnabled(False)
 		self.action_rotateRight.setEnabled(False)
 	
@@ -1025,11 +1046,13 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 			timezones = set()
 			keywords  = set()
 			copyright = set()
+			description = set()
 			orientationEdited = False
 			locationEdited = False
 			timezonesEdited = False
 			keywordsEdited = False
 			copyrightEdited = False
+			descriptionEdited = False
 			for item in items:
 				location.add(item.location())
 				timezones.add(item.timezones())
@@ -1040,11 +1063,13 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 				timezonesEdited = timezonesEdited or item.timezonesEdited()
 				keywordsEdited = keywordsEdited or item.keywordsEdited()
 				copyrightEdited = copyrightEdited or item.copyrightEdited()
+				descriptionEdited = descriptionEdited or item.descriptionEdited()
 			l_timezones = len(timezones)
 			l_location  = len(location)
 			l_keywords  = len(keywords)
 			l_copyright = len(copyright)
-			
+			l_description = len(description)
+
 			# import location data or resolve location conflicts
 			latitude,longitude,elevation = None,None,None
 			enabled_geo = self.dock_geotagging.isEnabled()
@@ -1206,6 +1231,38 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 			self.dock_copyright.setCopyright(copyrightNotice)
 			self.dock_copyright.setResetEnabled(copyrightEdited)
 			
+			# import description data or resolve conflicts
+			enabled_description = self.dock_description.isEnabled()
+			descriptionText = ""
+			if l_description <= 1:
+				try:
+					descriptionText = description.pop()
+				except:
+					pass
+				enabled_description = True
+			elif l_copyright > 1 and enabled_description:
+				lst_copyright = ["None (clear description)"]
+				lst_copyright.extend(list(copyright))
+				(answer,ok) = QtWidgets.QInputDialog.getItem(self,
+					QtCore.QCoreApplication.translate("Dialog","Copyright Collision"),
+					QtCore.QCoreApplication.translate("Dialog","The selected images feature different copyright notices.\nWhich one should be used?\nIf you cancel this dialog, copyright settings will be disabled."),
+					lst_copyright,0,False
+				)
+				if ok:
+					if answer != lst_copyright[0]:
+						descriptionText = str(answer)
+					descriptionEdited = False
+					for item in items:
+						item.setCopyright(descriptionText)
+						descriptionEdited = copyrightEdited or item.enabled_description()
+					enabled_description = True
+				else:
+					enabled_description = False
+
+			self.dock_description.setEnabled(enabled_description)
+			self.dock_description.setCopyright(descriptionText)
+			self.dock_description.setResetEnabled(descriptionEdited)
+
 			self.action_openGimp.setEnabled(len(self.ustr_path_gimp) > 0)
 			
 			self.action_resetAll.setEnabled(orientationEdited or locationEdited or timezonesEdited or keywordsEdited)
@@ -1372,6 +1429,27 @@ class FPPMainWindow(QtWidgets.QMainWindow):
 		self.listImagesSelectionChanged()
 	
 	#-----------------------------------------------------------------------
+	# description: methods
+	#-----------------------------------------------------------------------
+
+	def updateDescription(self,notice=""):
+		try:
+			notice = str(notice)
+			edited = False
+			for item in self.list_images.selectedItems():
+				item.setDescription(notice)
+				edited = edited or item.edited()
+			self.dock_description.setResetEnabled(edited)
+			self.action_resetDescription.setEnabled(edited)
+		except:
+			pass
+
+
+	def resetDescription(self):
+		for item in self.list_images.selectedItems(): item.resetDescription()
+		self.listImagesSelectionChanged()
+
+	#-----------------------------------------------------------------------
 	
 	def processChanges(self):
 		"""Inspect image list, collect all changes and generate a command list.
@@ -1453,6 +1531,11 @@ Returns:
 						item.copyright()
 					))
 				
+				if item.descriptionEdited():
+					parameters.append("-xmp-dc:description={0}".format(
+						item.description()
+					))
+
 				dct_parameters[name] = parameters
 		
 		return dct_parameters

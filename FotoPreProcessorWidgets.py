@@ -471,8 +471,8 @@ Attributes: Delete on close"""
 
 
 
-class FPPCopyrightDock(QtWidgets.QDockWidget):
-	""""Class for the Copyright Dock Widget."""
+class FPPDescriptionDock(QtWidgets.QDockWidget):
+	""""Class for the Description Dock Widget."""
 	
 	# new signal/slot mechanism: define custom signals
 	dockResetTriggered = QtCore.pyqtSignal()
@@ -484,7 +484,7 @@ class FPPCopyrightDock(QtWidgets.QDockWidget):
 
 Features: Floatable | Movable | Closable
 Attributes: Delete on close"""
-		QtWidgets.QDockWidget.__init__(self,QtCore.QCoreApplication.translate("DockWidgets","Copyright Notice"))
+		QtWidgets.QDockWidget.__init__(self,QtCore.QCoreApplication.translate("DockWidgets","Description"))
 		
 		settings = QtCore.QSettings()
 		settings.setIniCodec(QtCore.QTextCodec.codecForName("UTF-8"))
@@ -493,20 +493,21 @@ Attributes: Delete on close"""
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose,False)
 		
 		self.DBCopyright = FotoPreProcessorTools.FPPStringDB()
-		try:    self.DBCopyright.loadList([str(i) for i in settings.value("Copyright",[])])
+		try:    self.DBCopyright.loadList([str(i) for i in settings.value("Description",[])])
 		except: pass
 		
-		self.edit_copyright = QtWidgets.QLineEdit()
-		self.completer = QtWidgets.QCompleter(self.DBCopyright.strings(),self.edit_copyright)
-		self.edit_copyright.setCompleter(self.completer)
-		
+		self.edit_description = QtWidgets.QTextEdit()
+		self.completer = QtWidgets.QCompleter(self.DBCopyright.strings(),self.edit_description)
+
 		box_stdButtons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Reset)
 		self.button_reset = box_stdButtons.button(QtWidgets.QDialogButtonBox.Reset)
-		
+		self.button_save = QtWidgets.QPushButton("Save")
+		box_stdButtons.addButton(self.button_save,QtWidgets.QDialogButtonBox.ActionRole)
+
 		layout_copyright = QtWidgets.QFormLayout()
 		layout_copyright.addRow(
-			QtCore.QCoreApplication.translate("DockWidgets","Photographer:"),
-			self.edit_copyright
+			QtCore.QCoreApplication.translate("DockWidgets","Description:"),
+			self.edit_description
 		)
 		
 		layout = QtWidgets.QVBoxLayout()
@@ -519,12 +520,91 @@ Attributes: Delete on close"""
 		self.setWidget(widget)
 		
 		self.button_reset.clicked.connect(self.triggerReset)
-		self.edit_copyright.editingFinished.connect(self.updateData)
+		self.button_save.clicked.connect(self.updateData)
+		# self.edit_copyright.editingFinished.connect(self.updateData)
 		
 		self.setCopyright()
 
-	
-	
+	def setCopyright(self, notice=""):
+		try:
+			notice = str(notice)
+			if len(notice) > 0:
+				self.DBCopyright.add(notice)
+				self.completer.model().setStringList(self.DBCopyright.strings())
+			self.edit_description.setText(notice)  # moved to this pos so that it gets in any case
+		except:
+			pass
+
+	def triggerReset(self, button=None):
+		self.dockResetTriggered.emit()
+
+
+	def updateData(self):
+		notice = str(self.edit_description.toPlainText())
+		self.dockDataUpdated.emit(notice)
+		self.DBCopyright.add(notice)
+		self.completer.model().setStringList(self.DBCopyright.strings())
+
+
+	def setResetEnabled(self, state=True):
+		self.button_reset.setEnabled(bool(state))
+
+
+class FPPCopyrightDock(QtWidgets.QDockWidget):
+	""""Class for the Copyright Dock Widget."""
+
+	# new signal/slot mechanism: define custom signals
+	dockResetTriggered = QtCore.pyqtSignal()
+	dockDataUpdated = QtCore.pyqtSignal(str)
+	dockKeywordRemoved = QtCore.pyqtSignal(str)
+
+	def __init__(self):
+		"""Constructor; initialise dock widget and setup its GUI elements.
+
+Features: Floatable | Movable | Closable
+Attributes: Delete on close"""
+		QtWidgets.QDockWidget.__init__(self,QtCore.QCoreApplication.translate("DockWidgets","Copyright Notice"))
+
+		settings = QtCore.QSettings()
+		settings.setIniCodec(QtCore.QTextCodec.codecForName("UTF-8"))
+
+		self.setFeatures(QtWidgets.QDockWidget.AllDockWidgetFeatures)
+		self.setAttribute(QtCore.Qt.WA_DeleteOnClose,False)
+
+		self.DBCopyright = FotoPreProcessorTools.FPPStringDB()
+		try:    self.DBCopyright.loadList([str(i) for i in settings.value("Copyright",[])])
+		except: pass
+
+		self.edit_copyright = QtWidgets.QLineEdit()
+		self.completer = QtWidgets.QCompleter(self.DBCopyright.strings(),self.edit_copyright)
+		self.edit_copyright.setCompleter(self.completer)
+
+		box_stdButtons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Reset)
+		self.button_reset = box_stdButtons.button(QtWidgets.QDialogButtonBox.Reset)
+		self.button_reset = box_stdButtons.button(QtWidgets.QDialogButtonBox.Reset)
+
+		layout_copyright = QtWidgets.QFormLayout()
+		layout_copyright.addRow(
+			QtCore.QCoreApplication.translate("DockWidgets","Photographer:"),
+			self.edit_copyright
+		)
+
+		layout = QtWidgets.QVBoxLayout()
+		layout.addLayout(layout_copyright)
+		layout.addWidget(box_stdButtons)
+		layout.setAlignment(QtCore.Qt.AlignTop)
+
+		widget = QtWidgets.QWidget()
+		widget.setLayout(layout)
+		self.setWidget(widget)
+
+		self.button_reset.clicked.connect(self.triggerReset)
+		self.edit_copyright.editingFinished.connect(self.updateData)
+
+		self.setCopyright()
+
+
+
 	def setCopyright(self,notice=""):
 		try:
 			notice = str(notice)
